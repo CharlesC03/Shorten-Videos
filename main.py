@@ -60,7 +60,7 @@ parser.add_argument('-i','--input_file', type=str,  help='the video file you wan
 parser.add_argument('-o','--output_file', type=str, default="", help="the output file. (optional. if not included, it'll just modify the input file name)\nIf use -m then write the extension instead")
 parser.add_argument("-st",'--silent_threshold', type=float, default=0.03, help="the volume amount that frames' audio needs to surpass to be consider \"sounded\". It ranges from 0 (silence) to 1 (max volume)")
 parser.add_argument('-fm','--frame_margin', type=float, default=3, help="some silent frames adjacent to sounded frames are included to provide context. How many frames on either the side of speech should be included? That's this variable.")
-parser.add_argument('-s','--small', type=bool, default=False,  help='This can aliviate the amount of storaged used, however may increase run time')
+parser.add_argument('-s','--small', type=bool, default=True,  help='This can aliviate the amount of storaged used, however may increase run time')
 parser.add_argument('-m','--multiple_files', type=str, default="",  help='Put the directory where they will be outputed. DO NOT INCLUDE THE DOT. Also if -o is not used then it will be a .mp4 file.')
 parser.add_argument('-cl','--command_length', type=int, default=100,  help='This changes the length per command of each file or changes the amount of clips per video. The smaller the value the better you will be able to know how log it will take to complete, but will take longer. The maximumn value set is 120.')
 
@@ -211,21 +211,23 @@ else:
         print("Creates Temperary Video")
         subprocess.Popen("ffmpeg -hide_banner -loglevel panic -i {} {}".format(FILE_NAME, DIR), shell=True).wait()
 command = open("{}/temp.txt".format(TEMP_FOLDER), "w+")
-command.write('ffmpeg -hide_banner -loglevel panic -i {} -filter_complex "'.format(DIR))
+start_point = timing[0][0]
+command.write('ffmpeg -hide_banner -loglevel panic -ss {} -i {} -filter_complex "'.format(start_point, DIR))
 for i in tqdm(range(len(timing)), desc="Creating Command"):
-    command.write('[0:v]trim=start={}:end={},setpts=PTS-STARTPTS[v{}]; '.format(timing[i][0], timing[i][1], i%LENGTH_PER_COMMAND))
-    command.write('[0:a]atrim=start={}:end={},asetpts=PTS-STARTPTS[a{}]; '.format(timing[i][0], timing[i][1], i%LENGTH_PER_COMMAND))
+    command.write('[0:v]trim=start={}:end={},setpts=PTS-STARTPTS[v{}]; '.format(timing[i][0]-start_point, timing[i][1]-start_point, i%LENGTH_PER_COMMAND))
+    command.write('[0:a]atrim=start={}:end={},asetpts=PTS-STARTPTS[a{}]; '.format(timing[i][0]-start_point, timing[i][1]-start_point, i%LENGTH_PER_COMMAND))
     if(i % LENGTH_PER_COMMAND == LENGTH_PER_COMMAND-1):
         for m in range(LENGTH_PER_COMMAND):
             command.write('[v{}][a{}]'.format(m,m))
-        command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\'  -strict -2 {}/{}.mp4;\n'.format(i%LENGTH_PER_COMMAND + 1, TEMP_FOLDER, math.ceil(i/(LENGTH_PER_COMMAND))))
+        command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -c:v libx264 -preset ultrafast  -strict -2 {}/{}.mp4;\n'.format(i%LENGTH_PER_COMMAND + 1, TEMP_FOLDER, math.ceil(i/(LENGTH_PER_COMMAND))))
         if(i != len(timing)):
-            command.write('ffmpeg -hide_banner -loglevel panic -i {} -filter_complex "'.format(DIR))
+            start_point = timing[i][0]
+            command.write('ffmpeg -hide_banner -loglevel panic -ss{} -i {} -filter_complex "'.format(start_point, DIR))
 
 for i in tqdm(range(len(timing) % LENGTH_PER_COMMAND), desc="Finishing Command"):
     command.write('[v{}][a{}]'.format(i,i))
 if len(timing)%100 != 0:
-    command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' {}/final.mp4;'.format((len(timing))%LENGTH_PER_COMMAND,TEMP_FOLDER))
+    command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -c:v libx264 -preset ultrafast {}/final.mp4;'.format((len(timing))%LENGTH_PER_COMMAND,TEMP_FOLDER))
 command.close()
 command = open("{}/temp.txt".format(TEMP_FOLDER), "r")
 print("Now Running Command\nRemoving Quiet Parts\nThis Process can take long")
