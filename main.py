@@ -222,7 +222,7 @@ for i in tqdm(range(len(timing)), desc="Creating Command"):
         command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -c:v libx264 -preset ultrafast  -strict -2 {}/{}.mp4;\n'.format(i%LENGTH_PER_COMMAND + 1, TEMP_FOLDER, math.ceil(i/(LENGTH_PER_COMMAND))))
         if(i != len(timing)):
             start_point = timing[i][0]
-            command.write('ffmpeg -hide_banner -loglevel panic -ss{} -i {} -filter_complex "'.format(start_point, DIR))
+            command.write('ffmpeg -hide_banner -loglevel panic -ss {} -i {} -filter_complex "'.format(start_point, DIR))
 
 for i in tqdm(range(len(timing) % LENGTH_PER_COMMAND), desc="Finishing Command"):
     command.write('[v{}][a{}]'.format(i,i))
