@@ -255,5 +255,10 @@ subprocess.Popen("ffmpeg -f concat -safe 0 -i {}/list.txt -c copy {}".format(TEM
 command = "rm -r " + TEMP_FOLDER
 subprocess.run(command,shell=True)
 
-command = "mv {} temp_vids".format(FILE_NAME)
-# subprocess.run(command,shell=True)
+original_length = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
+cap2 = cv2.VideoCapture(OUTPUT_FILE)
+
+final_length = cap2.get(cv2.CAP_PROP_FRAME_COUNT)
+
+print("\nCompleted Shortening Video\nReduced Video Length by {}%".format((1 - (final_length/original_length))*100))
