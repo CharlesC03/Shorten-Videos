@@ -209,7 +209,7 @@ else:
     else:
         DIR = "{}/vid.mp4".format(TEMP_FOLDER)
         print("Creates Temperary Video")
-        subprocess.Popen("ffmpeg -hide_banner -loglevel panic -i {} {}".format(FILE_NAME, DIR), shell=True).wait()
+        subprocess.Popen("ffmpeg -hide_banner -loglevel panic -i {} -map_metadata -1 {}".format(FILE_NAME, DIR), shell=True).wait()
 command = open("{}/temp.txt".format(TEMP_FOLDER), "w+")
 start_point = timing[0][0]
 command.write('ffmpeg -hide_banner -loglevel panic -ss {} -i {} -filter_complex "'.format(start_point, DIR))
@@ -219,15 +219,15 @@ for i in tqdm(range(len(timing)), desc="Creating Command"):
     if(i % LENGTH_PER_COMMAND == LENGTH_PER_COMMAND-1):
         for m in range(LENGTH_PER_COMMAND):
             command.write('[v{}][a{}]'.format(m,m))
-        command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -c:v libx264 -preset ultrafast  -strict -2 {}/{}.mp4;\n'.format(i%LENGTH_PER_COMMAND + 1, TEMP_FOLDER, math.ceil(i/(LENGTH_PER_COMMAND))))
+        command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -map_metadata -1 -c:v libx264 -preset ultrafast {}/{}.mp4;\n'.format(i%LENGTH_PER_COMMAND + 1, TEMP_FOLDER, math.ceil(i/(LENGTH_PER_COMMAND))))
         if(i != len(timing)):
             start_point = timing[i][0]
             command.write('ffmpeg -hide_banner -loglevel panic -ss {} -i {} -filter_complex "'.format(start_point, DIR))
 
 for i in tqdm(range(len(timing) % LENGTH_PER_COMMAND), desc="Finishing Command"):
     command.write('[v{}][a{}]'.format(i,i))
-if len(timing)%100 != 0:
-    command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -c:v libx264 -preset ultrafast {}/final.mp4;'.format((len(timing))%LENGTH_PER_COMMAND,TEMP_FOLDER))
+if len(timing)%LENGTH_PER_COMMAND != 0:
+    command.write('concat=n={}:v=1:a=1[e][f]" -map \'[e]\' -map \'[f]\' -map_metadata -1 -c:v libx264 -preset ultrafast {}/final.mp4;'.format((len(timing))%LENGTH_PER_COMMAND,TEMP_FOLDER))
 command.close()
 command = open("{}/temp.txt".format(TEMP_FOLDER), "r")
 print("Now Running Command\nRemoving Quiet Parts\nThis Process can take long")
@@ -241,10 +241,13 @@ sleep(1)
 print("Gathering Files")
 file = open("{}/list.txt".format(TEMP_FOLDER), "w+")
 if(math.ceil(len(timing)/LENGTH_PER_COMMAND) != 1):
+    print(math.ceil(len(timing)/LENGTH_PER_COMMAND))
     for i in range(1,math.ceil(len(timing)/LENGTH_PER_COMMAND)):
         file.write("file '{}.mp4'\n".format(i))
-if len(timing)%100 != 0:
+if len(timing)%LENGTH_PER_COMMAND != 0:
     file.write("file 'final.mp4'")
+else:
+    file.write("file '{}.mp4'".format(math.ceil(len(timing)/LENGTH_PER_COMMAND)))
 file.close()
 
 
